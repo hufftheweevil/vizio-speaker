@@ -1,5 +1,5 @@
 {
-  "name": "vizio-smart-cast",
+  "name": "vizio-speaker",
   "version": "1.0.0",
   "description": "Communicate with Vizio SmartCast speakers",
   "main": "index.js",
