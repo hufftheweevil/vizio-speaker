@@ -1,0 +1,19 @@
+{
+  "name": "vizio-smart-cast",
+  "version": "1.0.0",
+  "description": "Communicate with Vizio SmartCast speakers",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hufftheweevil/vizio-speaker.git"
+  },
+  "author": "Justin Halbsgut <jhalbsgut@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hufftheweevil/vizio-speaker/issues"
+  },
+  "homepage": "https://github.com/hufftheweevil/vizio-speaker#readme",
+  "dependencies": {
+    "request": "^2.81.0"
+  }
+}
