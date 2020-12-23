@@ -52,7 +52,7 @@ class Speaker extends EventEmitter {
       ]
     }
     let res = await this.sendRequest('put', ENDPOINTS.KEY_PRESS, data)
-    return res?.STATUS?.RESULT
+    return res && res.STATUS && res.STATUS.RESULT
   }
 
   async pair() {
@@ -64,7 +64,7 @@ class Speaker extends EventEmitter {
     }
     let res = await this.sendRequest('put', ENDPOINTS.BEGIN_PAIR, data)
 
-    if (res?.STATUS?.RESULT) {
+    if (res && res.STATUS && res.STATUS.RESULT) {
       return res.STATUS.RESULT
     } else {
       throw Error(JSON.stringify(res))
@@ -74,7 +74,7 @@ class Speaker extends EventEmitter {
   power = {
     get: async () => {
       let res = await this.sendRequest('get', ENDPOINTS.POWER_MODE)
-      let val = res?.ITEMS?.[0]?.VALUE
+      let val = res && res.ITEMS && res.ITEMS[0] && res.ITEMS[0].VALUE
       return val === 1 ? 'On' : val === 0 ? 'Off' : undefined
     },
     on: () => this.keyCommand(KEYS.POW_ON),
@@ -85,11 +85,13 @@ class Speaker extends EventEmitter {
   input = {
     list: async () => {
       let res = await this.sendRequest('get', ENDPOINTS.INPUTS)
-      return res?.ITEMS?.map(item => item.NAME).filter(name => name != 'Current Input')
+      return (
+        res && res.ITEMS && res.ITEMS.map(item => item.NAME).filter(name => name != 'Current Input')
+      )
     },
     get: async () => {
       let res = await this.sendRequest('get', ENDPOINTS.CURRENT_INPUT)
-      return res?.ITEMS?.[0]?.VALUE
+      return res && res.ITEMS && res.ITEMS[0] && res.ITEMS[0].VALUE
     },
     set: async name => {
       let inputList = await this.input.list()
@@ -98,11 +100,14 @@ class Speaker extends EventEmitter {
       if (inputList.STATUS.RESULT !== 'SUCCESS' || currentInput.STATUS.RESULT !== 'SUCCESS')
         throw Error({ list: inputList, current: currentInput })
 
-      let inputName = inputList.ITEMS?.find(
-        item =>
-          item.NAME.toLowerCase() === name.toLowerCase() ||
-          item.VALUE.NAME.toLowerCase() === name.toLowerCase()
-      )?.NAME
+      let inputItem =
+        inputList.ITEMS &&
+        inputList.ITEMS.find(
+          item =>
+            item.NAME.toLowerCase() === name.toLowerCase() ||
+            item.VALUE.NAME.toLowerCase() === name.toLowerCase()
+        )
+      let inputName = inputItem && itemItem.NAME
 
       if (!inputName) throw Error(`Input: ${name} not found in list:`, inputList)
 
@@ -112,7 +117,7 @@ class Speaker extends EventEmitter {
         HASHVAL: currentInput.ITEMS[0].HASHVAL
       }
       let res = await this.sendRequest('put', ENDPOINTS.CURRENT_INPUT, data)
-      return res?.STATUS?.RESULT
+      return res && res.STATUS && res.STATUS.RESULT
     }
   }
 
@@ -121,7 +126,7 @@ class Speaker extends EventEmitter {
     up: () => this.keyCommand(KEYS.VOL_UP),
     get: async () => {
       let res = await this.sendRequest('get', ENDPOINTS.VOLUME)
-      return res?.ITEMS?.[0]?.VALUE
+      return res && res.ITEMS && res.ITEMS[0] && res.ITEMS[0].VALUE
     },
     set: async value => {
       if (typeof value !== 'number') throw Error('value must be a number')
@@ -129,7 +134,7 @@ class Speaker extends EventEmitter {
         throw Error('value is out of range, please enter a number between 0 to 100 inclusive')
 
       let settings = await this.settings.audio.get()
-      let volume = settings.ITEMS?.find(i => i.CNAME === 'volume')
+      let volume = settings.ITEMS && settings.ITEMS.find(i => i.CNAME === 'volume')
       if (!volume) throw Error('no volume setting found')
 
       let data = {
@@ -138,11 +143,11 @@ class Speaker extends EventEmitter {
         VALUE: Math.round(value)
       }
       let res = await this.sendRequest('put', ENDPOINTS.VOLUME, data)
-      return res?.STATUS?.RESULT
+      return res && res.STATUS && res.STATUS.RESULT
     },
     getMute: async () => {
       let res = await this.sendRequest('get', ENDPOINTS.MUTE)
-      return res?.ITEMS?.[0]?.VALUE
+      return res && res.ITEMS && res.ITEMS[0] && res.ITEMS[0].VALUE
     },
     unmute: () => this.keyCommand(KEYS.MUTE_OFF),
     mute: () => this.keyCommand(KEYS.MUTE_ON),
@@ -200,17 +205,18 @@ class Menu extends EventEmitter {
   }
   get cache() {
     let obj = {}
-    this.items?.forEach(itemName => {
-      let val = this[itemName]?.cache
-      if (val) obj[itemName] = val
-    })
+    this.items &&
+      this.items.forEach(itemName => {
+        let val = this[itemName] && this[itemName].cache
+        if (val) obj[itemName] = val
+      })
     return obj
   }
   async get() {
     // Fetch settings at this path
     this._lastResult = await this.speaker.sendRequest('get', this.path)
     // If is menu
-    if (this._lastResult.TYPE?.match(/MENU/)) {
+    if (this._lastResult.TYPE && this._lastResult.TYPE.match(/MENU/)) {
       // Make array of next endpoints
       this.items = this._lastResult.ITEMS.map(item => item.CNAME)
       // For each item
@@ -242,7 +248,7 @@ class Menu extends EventEmitter {
     return this.cache
   }
   checkIfReady() {
-    if (this.items?.every(name => this[name]?.isReady)) this.ready()
+    if (this.items && this.items.every(name => this[name] && this[name].isReady)) this.ready()
   }
 }
 
@@ -255,7 +261,7 @@ class Setting {
   }
   get cache() {
     let item = this._lastResult
-    return item?.VALUE?.NAME == '' ? item?.NAME : item?.VALUE
+    return item && item.VALUE && item.VALUE.NAME == '' ? item.NAME : item.VALUE
   }
   async get() {
     let res = await this.speaker.sendRequest('get', this.path)
