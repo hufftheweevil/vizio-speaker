@@ -9,6 +9,7 @@ class Speaker extends EventEmitter {
     this.host = host
     this.settings = new Menu(this, ENDPOINTS.SETTINGS)
     this.settings.on('ready', () => this.emit('ready'))
+    this._lastPoll = {}
   }
 
   sendRequest(method, path = '', data) {
@@ -27,7 +28,7 @@ class Speaker extends EventEmitter {
       request(options, function (error, response = {}) {
         if (error) {
           if (error.code == 'ETIMEDOUT') console.error(error)
-          reject(error)
+          resolve(error)
         }
         let res = {}
         try {
@@ -50,7 +51,7 @@ class Speaker extends EventEmitter {
         }
       ]
     }
-    let res = await sendRequest('put', ENDPOINTS.KEY_PRESS, data)
+    let res = await this.sendRequest('put', ENDPOINTS.KEY_PRESS, data)
     return res?.STATUS?.RESULT
   }
 
@@ -84,7 +85,7 @@ class Speaker extends EventEmitter {
   input = {
     list: async () => {
       let res = await this.sendRequest('get', ENDPOINTS.INPUTS)
-      return res?.ITEMS?.map(item => item.NAME)
+      return res?.ITEMS?.map(item => item.NAME).filter(name => name != 'Current Input')
     },
     get: async () => {
       let res = await this.sendRequest('get', ENDPOINTS.CURRENT_INPUT)
@@ -152,6 +153,35 @@ class Speaker extends EventEmitter {
     play: () => this.keyCommand(KEYS.PLAY),
     pause: () => this.keyCommand(KEYS.PAUSE)
   }
+
+  poll(interval = 60000) {
+    if (interval <= 0) return this.stopPoll()
+    if (interval < 5000) interval = 5000
+    if (this._timer) clearInterval(this._timer)
+    this._timer = setInterval(this._poll.bind(this), interval)
+    this._poll(true)
+  }
+
+  async _poll(init) {
+    // If no one else is listening, stop polling
+    if (this.listenerCount('change') == 0) return this.stopPoll()
+    // Get basic state
+    let state = {}
+    state.power = await this.power.get()
+    state.input = await this.input.get()
+    state.volume = await this.volume.get()
+    state.mute = await this.volume.getMute()
+    // Check if diff
+    if (init || JSON.stringify(state) !== JSON.stringify(this._lastPoll)) {
+      this.emit('change', state)
+      this._lastPoll = state
+    }
+  }
+
+  stopPoll() {
+    clearInterval(this._timer)
+    delete this._timer
+  }
 }
 
 class Menu extends EventEmitter {
@@ -212,7 +242,7 @@ class Menu extends EventEmitter {
     return this.cache
   }
   checkIfReady() {
-    if (this.items.every(name => this[name]?.isReady)) this.ready()
+    if (this.items?.every(name => this[name]?.isReady)) this.ready()
   }
 }
 
