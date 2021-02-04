@@ -94,27 +94,23 @@ class Speaker extends EventEmitter {
       return res && res.ITEMS && res.ITEMS[0] && res.ITEMS[0].VALUE
     },
     set: async name => {
-      let inputList = await this.input.list()
-      let currentInput = await this.input.current()
-
-      if (inputList.STATUS.RESULT !== 'SUCCESS' || currentInput.STATUS.RESULT !== 'SUCCESS')
-        throw Error({ list: inputList, current: currentInput })
+      let inputList = this.settings.input._lastResult.ITEMS
 
       let inputItem =
-        inputList.ITEMS &&
-        inputList.ITEMS.find(
+        inputList &&
+        inputList.find(
           item =>
             item.NAME.toLowerCase() === name.toLowerCase() ||
             item.VALUE.NAME.toLowerCase() === name.toLowerCase()
         )
-      let inputName = inputItem && itemItem.NAME
+      let inputName = inputItem && inputItem.NAME
 
       if (!inputName) throw Error(`Input: ${name} not found in list:`, inputList)
 
       let data = {
         REQUEST: 'MODIFY',
         VALUE: inputName,
-        HASHVAL: currentInput.ITEMS[0].HASHVAL
+        HASHVAL: this.settings.input.current_input._lastResult.HASHVAL
       }
       let res = await this.sendRequest('put', ENDPOINTS.CURRENT_INPUT, data)
       return res && res.STATUS && res.STATUS.RESULT
@@ -133,13 +129,9 @@ class Speaker extends EventEmitter {
       if (value < 0 || value > 100)
         throw Error('value is out of range, please enter a number between 0 to 100 inclusive')
 
-      let settings = await this.settings.audio.get()
-      let volume = settings.ITEMS && settings.ITEMS.find(i => i.CNAME === 'volume')
-      if (!volume) throw Error('no volume setting found')
-
       let data = {
         REQUEST: 'MODIFY',
-        HASHVAL: volume.HASHVAL,
+        HASHVAL: this.settings.audio.volume._lastResult.HASVAL,
         VALUE: Math.round(value)
       }
       let res = await this.sendRequest('put', ENDPOINTS.VOLUME, data)
